@@ -1,11 +1,9 @@
 import { close, connect } from "mcp-testing-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import * as helpers from "./client/helpers";
 import * as sdk from "./client/sdk.gen";
 import { server as mcpServer } from "./server";
 
 vi.mock("./client/sdk.gen");
-vi.mock("./client/helpers");
 vi.mock("axios");
 
 describe("MCP Server", () => {
@@ -18,434 +16,287 @@ describe("MCP Server", () => {
     const client = await connect(mcpServer.server);
     const result = await client.listTools();
     expect(result.tools).toEqual([
-      expect.objectContaining({ name: "coda_list_documents" }),
-      expect.objectContaining({ name: "coda_list_pages" }),
-      expect.objectContaining({ name: "coda_create_page" }),
-      expect.objectContaining({ name: "coda_get_page_content" }),
-      expect.objectContaining({ name: "coda_replace_page_content" }),
-      expect.objectContaining({ name: "coda_append_page_content" }),
-      expect.objectContaining({ name: "coda_duplicate_page" }),
-      expect.objectContaining({ name: "coda_rename_page" }),
+      expect.objectContaining({ name: "bling_list_propostas" }),
+      expect.objectContaining({ name: "bling_create_proposta" }),
+      expect.objectContaining({ name: "bling_get_proposta" }),
+      expect.objectContaining({ name: "bling_update_proposta" }),
+      expect.objectContaining({ name: "bling_update_proposta_situacao" }),
+      expect.objectContaining({ name: "bling_delete_proposta" }),
     ]);
   });
 });
 
-describe("coda_list_documents", () => {
-  it("should list documents without query", async () => {
-    vi.mocked(sdk.listDocs).mockResolvedValue({
+describe("bling_list_propostas", () => {
+  it("should list proposals without filters", async () => {
+    vi.mocked(sdk.getPropostasComerciais).mockResolvedValue({
       data: {
-        items: [
-          { id: "123", name: "Test Document" },
-          { id: "456", name: "Another Document" },
+        data: [
+          { id: 123, numero: "001", situacao: "Pendente" },
+          { id: 456, numero: "002", situacao: "Aprovado" },
         ],
       },
     } as any);
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_list_documents", { query: "" });
+    const result = await client.callTool("bling_list_propostas", {});
     expect(result.content).toEqual([
       {
         type: "text",
         text: JSON.stringify({
-          items: [
-            { id: "123", name: "Test Document" },
-            { id: "456", name: "Another Document" },
+          data: [
+            { id: 123, numero: "001", situacao: "Pendente" },
+            { id: 456, numero: "002", situacao: "Aprovado" },
           ],
         }),
       },
     ]);
-  });
-
-  it("should list documents with query", async () => {
-    vi.mocked(sdk.listDocs).mockResolvedValue({
-      data: {
-        items: [{ id: "123", name: "Test Document" }],
-      },
-    } as any);
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_list_documents", { query: "test" });
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: JSON.stringify({
-          items: [{ id: "123", name: "Test Document" }],
-        }),
-      },
-    ]);
-  });
-
-  it("should show error if list documents throws", async () => {
-    vi.mocked(sdk.listDocs).mockRejectedValue(new Error("foo"));
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_list_documents", { query: "test" });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to list documents: Error: foo" }]);
-  });
-});
-
-describe("coda_list_pages", () => {
-  it("should list pages successfully", async () => {
-    vi.mocked(sdk.listPages).mockResolvedValue({
-      data: {
-        items: [
-          { id: "page-123", name: "Test Page 1" },
-          { id: "page-456", name: "Test Page 2" },
-        ],
-      },
-    } as any);
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_list_pages", { docId: "doc-123" });
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: JSON.stringify({
-          items: [
-            { id: "page-123", name: "Test Page 1" },
-            { id: "page-456", name: "Test Page 2" },
-          ],
-        }),
-      },
-    ]);
-    expect(sdk.listPages).toHaveBeenCalledWith({
-      path: { docId: "doc-123" },
+    expect(sdk.getPropostasComerciais).toHaveBeenCalledWith({
+      query: {},
       throwOnError: true,
     });
   });
 
-  it("should show error if list pages throws", async () => {
-    vi.mocked(sdk.listPages).mockRejectedValue(new Error("Access denied"));
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_list_pages", { docId: "doc-123" });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to list pages: Error: Access denied" }]);
-  });
-});
-
-describe("coda_create_page", () => {
-  it("should create page with content", async () => {
-    vi.mocked(sdk.createPage).mockResolvedValue({
+  it("should list proposals with filters", async () => {
+    vi.mocked(sdk.getPropostasComerciais).mockResolvedValue({
       data: {
-        id: "page-new",
-        requestId: "req-123",
+        data: [{ id: 123, numero: "001", situacao: "Pendente" }],
       },
     } as any);
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_create_page", {
-      docId: "doc-123",
-      name: "New Page",
-      content: "# Hello World",
+    const result = await client.callTool("bling_list_propostas", {
+      situacao: "Pendente",
+      idContato: 789,
+      dataInicial: "2024-01-01",
+      dataFinal: "2024-12-31",
+      pagina: 1,
+      limite: 10,
     });
     expect(result.content).toEqual([
       {
         type: "text",
         text: JSON.stringify({
-          id: "page-new",
-          requestId: "req-123",
+          data: [{ id: 123, numero: "001", situacao: "Pendente" }],
         }),
       },
     ]);
-    expect(sdk.createPage).toHaveBeenCalledWith({
-      path: { docId: "doc-123" },
-      body: {
-        name: "New Page",
-        pageContent: {
-          type: "canvas",
-          canvasContent: { format: "markdown", content: "# Hello World" },
-        },
+    expect(sdk.getPropostasComerciais).toHaveBeenCalledWith({
+      query: {
+        situacao: "Pendente",
+        idContato: 789,
+        dataInicial: "2024-01-01",
+        dataFinal: "2024-12-31",
+        pagina: 1,
+        limite: 10,
       },
       throwOnError: true,
     });
   });
 
-  it("should create page without content", async () => {
-    vi.mocked(sdk.createPage).mockResolvedValue({
-      data: {
-        id: "page-new",
-        requestId: "req-124",
-      },
-    } as any);
+  it("should show error if list proposals throws", async () => {
+    vi.mocked(sdk.getPropostasComerciais).mockRejectedValue(new Error("API Error"));
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_create_page", {
-      docId: "doc-123",
-      name: "Empty Page",
-    });
-    expect(sdk.createPage).toHaveBeenCalledWith({
-      path: { docId: "doc-123" },
-      body: {
-        name: "Empty Page",
-        pageContent: {
-          type: "canvas",
-          canvasContent: { format: "markdown", content: " " },
-        },
-      },
-      throwOnError: true,
-    });
-  });
-
-  it("should show error if create page throws", async () => {
-    vi.mocked(sdk.createPage).mockRejectedValue(new Error("Insufficient permissions"));
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_create_page", {
-      docId: "doc-123",
-      name: "New Page",
-    });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to create page: Error: Insufficient permissions" }]);
+    const result = await client.callTool("bling_list_propostas", {});
+    expect(result.content).toEqual([{ type: "text", text: "Failed to list proposals: Error: API Error" }]);
+    expect(result.isError).toBe(true);
   });
 });
 
-describe("coda_get_page_content", () => {
-  it("should get page content successfully", async () => {
-    vi.mocked(helpers.getPageContent).mockResolvedValue("# Page Title\n\nThis is the content.");
+describe("bling_create_proposta", () => {
+  const mockProposta = {
+    data: "2024-03-20",
+    situacao: "Pendente",
+    numero: 123,
+    contato: { id: 789 },
+    itens: [
+      {
+        produto: { id: 456 },
+        quantidade: 2,
+        valor: 100.50,
+      },
+    ],
+    parcelas: [
+      {
+        numeroDias: 30,
+        valor: 201.00,
+        formaPagamento: { id: 1 },
+      },
+    ],
+  };
+
+  it("should create proposal successfully", async () => {
+    vi.mocked(sdk.postPropostasComerciais).mockResolvedValue({
+      data: { id: 123 },
+    } as any);
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_get_page_content", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
+    const result = await client.callTool("bling_create_proposta", { proposta: mockProposta });
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: JSON.stringify({ id: 123 }),
+      },
+    ]);
+    expect(sdk.postPropostasComerciais).toHaveBeenCalledWith({
+      body: mockProposta,
+      throwOnError: true,
+    });
+  });
+
+  it("should show error if create proposal throws", async () => {
+    vi.mocked(sdk.postPropostasComerciais).mockRejectedValue(new Error("Creation failed"));
+
+    const client = await connect(mcpServer.server);
+    const result = await client.callTool("bling_create_proposta", { proposta: mockProposta });
+    expect(result.content).toEqual([{ type: "text", text: "Failed to create proposal: Error: Creation failed" }]);
+    expect(result.isError).toBe(true);
+  });
+});
+
+describe("bling_get_proposta", () => {
+  it("should get proposal successfully", async () => {
+    const mockProposta = {
+      id: 123,
+      numero: "001",
+      situacao: "Pendente",
+      data: "2024-03-20",
+    };
+
+    vi.mocked(sdk.getPropostasComerciaisByIdPropostaComercial).mockResolvedValue({
+      data: mockProposta,
+    } as any);
+
+    const client = await connect(mcpServer.server);
+    const result = await client.callTool("bling_get_proposta", { idPropostaComercial: 123 });
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: JSON.stringify(mockProposta),
+      },
+    ]);
+    expect(sdk.getPropostasComerciaisByIdPropostaComercial).toHaveBeenCalledWith({
+      path: { idPropostaComercial: 123 },
+      throwOnError: true,
+    });
+  });
+
+  it("should show error if get proposal throws", async () => {
+    vi.mocked(sdk.getPropostasComerciaisByIdPropostaComercial).mockRejectedValue(new Error("Not found"));
+
+    const client = await connect(mcpServer.server);
+    const result = await client.callTool("bling_get_proposta", { idPropostaComercial: 123 });
+    expect(result.content).toEqual([{ type: "text", text: "Failed to get proposal: Error: Not found" }]);
+    expect(result.isError).toBe(true);
+  });
+});
+
+describe("bling_update_proposta", () => {
+  const mockProposta = {
+    data: "2024-03-21",
+    situacao: "Aprovado",
+    observacoes: "Updated proposal",
+  };
+
+  it("should update proposal successfully", async () => {
+    vi.mocked(sdk.putPropostasComerciaisByIdPropostaComercial).mockResolvedValue({
+      data: { message: "Success" },
+    } as any);
+
+    const client = await connect(mcpServer.server);
+    const result = await client.callTool("bling_update_proposta", {
+      idPropostaComercial: 123,
+      proposta: mockProposta,
     });
     expect(result.content).toEqual([
       {
         type: "text",
-        text: "# Page Title\n\nThis is the content.",
+        text: "Proposal updated successfully",
       },
     ]);
-    expect(helpers.getPageContent).toHaveBeenCalledWith("doc-123", "page-456");
-  });
-
-  it("should show error if getPageContent returns undefined", async () => {
-    vi.mocked(helpers.getPageContent).mockResolvedValue(undefined as any);
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_get_page_content", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-    });
-    expect(result.content).toEqual([
-      { type: "text", text: "Failed to get page content: Error: Unknown error has occurred" },
-    ]);
-  });
-
-  it("should show error if getPageContent throws", async () => {
-    vi.mocked(helpers.getPageContent).mockRejectedValue(new Error("Export failed"));
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_get_page_content", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-    });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to get page content: Error: Export failed" }]);
-  });
-});
-
-describe("coda_replace_page_content", () => {
-  it("should replace page content successfully", async () => {
-    vi.mocked(sdk.updatePage).mockResolvedValue({
-      data: {
-        id: "page-456",
-        requestId: "req-125",
-      },
-    } as any);
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_replace_page_content", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      content: "# New Content\n\nReplaced content.",
-    });
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: JSON.stringify({
-          id: "page-456",
-          requestId: "req-125",
-        }),
-      },
-    ]);
-    expect(sdk.updatePage).toHaveBeenCalledWith({
-      path: { docId: "doc-123", pageIdOrName: "page-456" },
-      body: {
-        contentUpdate: {
-          insertionMode: "replace",
-          canvasContent: { format: "markdown", content: "# New Content\n\nReplaced content." },
-        },
-      },
+    expect(sdk.putPropostasComerciaisByIdPropostaComercial).toHaveBeenCalledWith({
+      path: { idPropostaComercial: 123 },
+      body: mockProposta,
       throwOnError: true,
     });
   });
 
-  it("should show error if replace page content throws", async () => {
-    vi.mocked(sdk.updatePage).mockRejectedValue(new Error("Update failed"));
+  it("should show error if update proposal throws", async () => {
+    vi.mocked(sdk.putPropostasComerciaisByIdPropostaComercial).mockRejectedValue(new Error("Update failed"));
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_replace_page_content", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      content: "# New Content",
+    const result = await client.callTool("bling_update_proposta", {
+      idPropostaComercial: 123,
+      proposta: mockProposta,
     });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to replace page content: Error: Update failed" }]);
+    expect(result.content).toEqual([{ type: "text", text: "Failed to update proposal: Error: Update failed" }]);
+    expect(result.isError).toBe(true);
   });
 });
 
-describe("coda_append_page_content", () => {
-  it("should append page content successfully", async () => {
-    vi.mocked(sdk.updatePage).mockResolvedValue({
-      data: {
-        id: "page-456",
-        requestId: "req-126",
-      },
+describe("bling_update_proposta_situacao", () => {
+  it("should update proposal status successfully", async () => {
+    vi.mocked(sdk.patchPropostasComerciaisByIdPropostaComercialSituacoes).mockResolvedValue({
+      data: { message: "Success" },
     } as any);
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_append_page_content", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      content: "\n\n## Appended Section\n\nNew content.",
+    const result = await client.callTool("bling_update_proposta_situacao", {
+      idPropostaComercial: 123,
+      situacao: { situacao: "Aprovado" },
     });
     expect(result.content).toEqual([
       {
         type: "text",
-        text: JSON.stringify({
-          id: "page-456",
-          requestId: "req-126",
-        }),
+        text: "Proposal status updated successfully",
       },
     ]);
-    expect(sdk.updatePage).toHaveBeenCalledWith({
-      path: { docId: "doc-123", pageIdOrName: "page-456" },
-      body: {
-        contentUpdate: {
-          insertionMode: "append",
-          canvasContent: { format: "markdown", content: "\n\n## Appended Section\n\nNew content." },
-        },
-      },
+    expect(sdk.patchPropostasComerciaisByIdPropostaComercialSituacoes).toHaveBeenCalledWith({
+      path: { idPropostaComercial: 123 },
+      body: { situacao: "Aprovado" },
       throwOnError: true,
     });
   });
 
-  it("should show error if append page content throws", async () => {
-    vi.mocked(sdk.updatePage).mockRejectedValue(new Error("Append failed"));
+  it("should show error if update status throws", async () => {
+    vi.mocked(sdk.patchPropostasComerciaisByIdPropostaComercialSituacoes).mockRejectedValue(new Error("Status update failed"));
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_append_page_content", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      content: "Additional content",
+    const result = await client.callTool("bling_update_proposta_situacao", {
+      idPropostaComercial: 123,
+      situacao: { situacao: "Aprovado" },
     });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to append page content: Error: Append failed" }]);
+    expect(result.content).toEqual([{ type: "text", text: "Failed to update proposal status: Error: Status update failed" }]);
+    expect(result.isError).toBe(true);
   });
 });
 
-describe("coda_duplicate_page", () => {
-  it("should duplicate page successfully", async () => {
-    vi.mocked(helpers.getPageContent).mockResolvedValue("# Original Page\n\nOriginal content.");
-    vi.mocked(sdk.createPage).mockResolvedValue({
-      data: {
-        id: "page-duplicate",
-        requestId: "req-127",
-      },
+describe("bling_delete_proposta", () => {
+  it("should delete proposal successfully", async () => {
+    vi.mocked(sdk.deletePropostasComerciaisByIdPropostaComercial).mockResolvedValue({
+      data: { message: "Success" },
     } as any);
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_duplicate_page", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      newName: "Duplicated Page",
-    });
+    const result = await client.callTool("bling_delete_proposta", { idPropostaComercial: 123 });
     expect(result.content).toEqual([
       {
         type: "text",
-        text: JSON.stringify({
-          id: "page-duplicate",
-          requestId: "req-127",
-        }),
+        text: "Proposal deleted successfully",
       },
     ]);
-    expect(helpers.getPageContent).toHaveBeenCalledWith("doc-123", "page-456");
-    expect(sdk.createPage).toHaveBeenCalledWith({
-      path: { docId: "doc-123" },
-      body: {
-        name: "Duplicated Page",
-        pageContent: {
-          type: "canvas",
-          canvasContent: { format: "markdown", content: "# Original Page\n\nOriginal content." },
-        },
-      },
+    expect(sdk.deletePropostasComerciaisByIdPropostaComercial).toHaveBeenCalledWith({
+      path: { idPropostaComercial: 123 },
       throwOnError: true,
     });
   });
 
-  it("should show error if getPageContent fails during duplication", async () => {
-    vi.mocked(helpers.getPageContent).mockRejectedValue(new Error("Content fetch failed"));
+  it("should show error if delete proposal throws", async () => {
+    vi.mocked(sdk.deletePropostasComerciaisByIdPropostaComercial).mockRejectedValue(new Error("Delete failed"));
 
     const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_duplicate_page", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      newName: "Duplicated Page",
-    });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to duplicate page: Error: Content fetch failed" }]);
-  });
-
-  it("should show error if createPage fails during duplication", async () => {
-    vi.mocked(helpers.getPageContent).mockResolvedValue("# Original Page");
-    vi.mocked(sdk.createPage).mockRejectedValue(new Error("Create failed"));
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_duplicate_page", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      newName: "Duplicated Page",
-    });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to duplicate page: Error: Create failed" }]);
-  });
-});
-
-describe("coda_rename_page", () => {
-  it("should rename page successfully", async () => {
-    vi.mocked(sdk.updatePage).mockResolvedValue({
-      data: {
-        id: "page-456",
-        requestId: "req-128",
-      },
-    } as any);
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_rename_page", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      newName: "Renamed Page",
-    });
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: JSON.stringify({
-          id: "page-456",
-          requestId: "req-128",
-        }),
-      },
-    ]);
-    expect(sdk.updatePage).toHaveBeenCalledWith({
-      path: { docId: "doc-123", pageIdOrName: "page-456" },
-      body: {
-        name: "Renamed Page",
-      },
-      throwOnError: true,
-    });
-  });
-
-  it("should show error if rename page throws", async () => {
-    vi.mocked(sdk.updatePage).mockRejectedValue(new Error("Rename failed"));
-
-    const client = await connect(mcpServer.server);
-    const result = await client.callTool("coda_rename_page", {
-      docId: "doc-123",
-      pageIdOrName: "page-456",
-      newName: "Renamed Page",
-    });
-    expect(result.content).toEqual([{ type: "text", text: "Failed to rename page: Error: Rename failed" }]);
+    const result = await client.callTool("bling_delete_proposta", { idPropostaComercial: 123 });
+    expect(result.content).toEqual([{ type: "text", text: "Failed to delete proposal: Error: Delete failed" }]);
+    expect(result.isError).toBe(true);
   });
 });

@@ -8405,7 +8405,7 @@ export type NotasFiscaisTransporteGetDtoWritable = {
    */
   fretePorConta?: 0 | 1 | 2 | 3 | 4 | 9;
   transportador?: NotasFiscaisTransporteTransportadorGetDto;
-  volumes?: Array<>;
+  volumes?: Array<NotasFiscaisTransporteVolumePostDtoReadable>;
   etiqueta?: NotasFiscaisTransporteEtiquetaDto;
 };
 
@@ -9153,7 +9153,7 @@ export type OrdensProducaoDadosDtoReadable = {
 };
 
 export type OrdensProducaoDadosDtoWritable = {
-  vendas?: Array<>;
+  vendas?: Array<OrdensProducaoVendaDto>;
   itens?: Array<OrdensProducaoItemDtoWritable>;
   observacoes?: string;
 };
