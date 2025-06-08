@@ -1,9 +1,9 @@
 {
-  "name": "coda-mcp",
-  "version": "1.2.3",
-  "description": "MCP Server for Coda",
+  "name": "mcp-bling",
+  "version": "1.0.3",
+  "description": "MCP Server for Bling",
   "repository": {
-    "url": "https://github.com/orellazri/coda-mcp"
+    "url": "https://github.com/peptina/mcp-bling"
   },
   "bin": {
     "coda": "./dist/index.js"
